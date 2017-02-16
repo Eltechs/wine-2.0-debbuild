@@ -6,7 +6,7 @@ override_dh_auto_configure:
 ifeq ($(DEB_BUILD_ARCH), amd64)
 	dh_auto_configure -- --enable-win64
 else
-	dh_auto_configure -- --enable-mem2g --with-opengl
+	dh_auto_configure -- --enable-mem2g --without-opengl
 endif
 
 override_dh_auto_test:
