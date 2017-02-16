@@ -1,0 +1,9 @@
+CJK-registry
+winex11-Prevent-window-managers-from-grouping-all-wi.patch
+0001-winemenubuilder-silence-an-err.patch
+0002-valgrind-prevent-crash-hack.patch
+0003-server-Use-rtkit-to-set-realtime-priority-try-4.patch
+0004-avrt-Add-realtime-to-stub.patch
+0005-server-Bump-priority-on-server-to-process-messages-f.patch
+0006-rtkit-add-SIGXCPU-handling-to-wineserver.patch
+mem2g.patch

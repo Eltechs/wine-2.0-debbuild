@@ -1,0 +1,249 @@
+diff --git a/Makefile.in b/Makefile.in
+index 5b658a2..8145527 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -70,6 +70,7 @@ CONVERT         = @CONVERT@
+ ICOTOOL         = @ICOTOOL@
+ MSGFMT          = @MSGFMT@
+ CROSSTARGET     = @CROSSTARGET@
++ELF_TEXT_ADDRESS  = @ELF_TEXT_ADDRESS@
+ SUBDIRS         = @SUBDIRS@
+ RUNTESTFLAGS    = -q -P wine
+ MAKEDEP         = $(TOOLSDIR)/tools/makedep$(TOOLSEXT)
+diff --git a/configure.ac b/configure.ac
+index 353f271..495409a 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -32,6 +32,7 @@ AC_ARG_ENABLE(win16, AS_HELP_STRING([--disable-win16],[do not include Win16 supp
+ AC_ARG_ENABLE(win64, AS_HELP_STRING([--enable-win64],[build a Win64 emulator on AMD64 (won't run Win32 binaries)]))
+ AC_ARG_ENABLE(tests, AS_HELP_STRING([--disable-tests],[do not build the regression tests]))
+ AC_ARG_ENABLE(maintainer-mode, AS_HELP_STRING([--enable-maintainer-mode],[enable maintainer-specific build rules]))
++AC_ARG_ENABLE(mem2g, AS_HELP_STRING([--enable-mem2g], [force 2g/2g userspace/kernel memory split instead of classic 3g/1g]))
+ 
+ AC_ARG_WITH(alsa,      AS_HELP_STRING([--without-alsa],[do not use the Alsa sound support]),
+             [if test "x$withval" = "xno"; then ac_cv_header_sys_asoundlib_h=no; ac_cv_header_alsa_asoundlib_h=no; fi])
+@@ -343,6 +344,52 @@ else
+   AS_UNSET(ac_cv_header_gettext_po_h)
+ fi
+ 
++if test "x$enable_mem2g" == "xyes"
++then
++  AC_DEFINE([CONFIG_VMSPLIT], [0x80000000], [ ])
++  AC_SUBST([CONFIG_VMSPLIT], [0x80000000])
++  AC_DEFINE([ELF_INTERP_ADDRESS], [0x3bf00400], [ ])
++  AC_SUBST([ELF_INTERP_ADDRESS], [0x3bf00400])
++  AC_DEFINE([ELF_TEXT_ADDRESS], [0x3c400000], [ ])
++  AC_SUBST([ELF_TEXT_ADDRESS], [0x3c400000])
++  AC_DEFINE([KERNEL32_IMAGE_BASE], [0x3b800000], [ ])
++  AC_SUBST([KERNEL32_IMAGE_BASE], [0x3b800000])
++  AC_DEFINE([NTDLL_IMAGE_BASE], [0x3bc00000], [ ])
++  AC_SUBST([NTDLL_IMAGE_BASE], [0x3bc00000])
++  AC_DEFINE([RICHED20_IMAGE_BASE], [0x3ac00000], [ ])
++  AC_SUBST([RICHED20_IMAGE_BASE], [0x3ac00000])
++else
++  AC_DEFINE([CONFIG_VMSPLIT], [0xc0000000], [ ])
++  AC_SUBST([CONFIG_VMSPLIT], [0xc0000000])
++  AC_DEFINE([ELF_INTERP_ADDRESS], [0x7bf00400], [ ])
++  AC_SUBST([ELF_INTERP_ADDRESS], [0x7bf00400])
++  AC_DEFINE([ELF_TEXT_ADDRESS], [0x7c400000], [ ])
++  AC_SUBST([ELF_TEXT_ADDRESS], [0x7c400000])
++  AC_DEFINE([KERNEL32_IMAGE_BASE], [0x7b800000], [ ])
++  AC_SUBST([KERNEL32_IMAGE_BASE], [0x7b800000])
++  AC_DEFINE([NTDLL_IMAGE_BASE], [0x7bc00000], [ ])
++  AC_SUBST([NTDLL_IMAGE_BASE], [0x7bc00000])
++  AC_DEFINE([RICHED20_IMAGE_BASE], [0x7ac00000], [ ])
++  AC_SUBST([RICHED20_IMAGE_BASE], [0x7ac00000])
++fi
++
++AC_DEFINE([CONFIG_ELF_ET_DYN_BASE], [(CONFIG_VMSPLIT - 0x40000000)], [ ])
++AC_SUBST([CONFIG_ELF_ET_DYN_BASE], [(CONFIG_VMSPLIT - 0x40000000)])
++AC_DEFINE([CONFIG_SHARED_DATA], [(CONFIG_VMSPLIT - 0x40020000)], [ ])
++AC_SUBST([CONFIG_SHARED_DATA], [(CONFIG_VMSPLIT - 0x40020000)])
++AC_DEFINE([CONFIG_LOWMEM_START], [0x00110000], [ ])
++AC_SUBST([CONFIG_LOWMEM_START], [0x00110000])
++AC_DEFINE([CONFIG_LOWMEM_END], [( CONFIG_VMSPLIT - 0x58000000)], [ ])
++AC_SUBST([CONFIG_LOWMEM_END], [( CONFIG_VMSPLIT - 0x58000000)])
++AC_DEFINE([CONFIG_LOWMEM_SIZE], [( CONFIG_LOWMEM_END - CONFIG_LOWMEM_START)], [ ])
++AC_SUBST([CONFIG_LOWMEM_SIZE], [( CONFIG_LOWMEM_END - CONFIG_LOWMEM_START)])
++AC_DEFINE([CONFIG_WINE_DATA_START], [( CONFIG_VMSPLIT - 0x41000000)], [ ])
++AC_SUBST([CONFIG_WINE_DATA_START], [( CONFIG_VMSPLIT - 0x41000000)])
++AC_DEFINE([CONFIG_WINE_DATA_END], [(CONFIG_VMSPLIT - 0x3e000000)], [ ])
++AC_SUBST([CONFIG_WINE_DATA_END], [(CONFIG_VMSPLIT - 0x3e000000)])
++AC_DEFINE([CONFIG_WINE_DATA_SIZE], [(CONFIG_WINE_DATA_END - CONFIG_WINE_DATA_START)], [ ])
++AC_SUBST([CONFIG_WINE_DATA_SIZE], [(CONFIG_WINE_DATA_END - CONFIG_WINE_DATA_START)])
++
+ test "x$with_gettext" != xno || MSGFMT=false
+ if test "$MSGFMT" != "false"
+ then
+@@ -899,15 +946,15 @@ case $host_os in
+ 
+       case $host_cpu in
+         *i[[3456789]]86* | x86_64)
+-          WINE_TRY_CFLAGS([-Wl,-Ttext-segment=0x7bc00000],
++          WINE_TRY_CFLAGS([-Wl,-Ttext-segment=$ELF_INTERP_ADDRESS],
+                           [case $host_os in
+                            freebsd* | kfreebsd*-gnu) LDEXECFLAGS="$LDEXECFLAGS -Wl,-Ttext-segment=0x60000000" ;;
+-                           *) LDEXECFLAGS="$LDEXECFLAGS -Wl,-Ttext-segment=0x7c000000" ;;
++                           *) LDEXECFLAGS="$LDEXECFLAGS -Wl,-Ttext-segment=$ELF_INTERP_ADDRESS" ;;
+                            esac],
+-                          [WINE_TRY_CFLAGS([-Wl,--section-start,.interp=0x7c000400],
++                          [WINE_TRY_CFLAGS([-Wl,--section-start,.interp=$ELF_INTERP_ADDRESS],
+                                            [case $host_os in
+                                               freebsd* | kfreebsd*-gnu) LDEXECFLAGS="$LDEXECFLAGS -Wl,--section-start,.interp=0x60000400" ;;
+-                                              *) LDEXECFLAGS="$LDEXECFLAGS -Wl,--section-start,.interp=0x7c000400" ;;
++                                              *) LDEXECFLAGS="$LDEXECFLAGS -Wl,--section-start,.interp=$ELF_INTERP_ADDRESS" ;;
+                                            esac])
+                            AC_PATH_PROG(PRELINK, prelink, false, [/sbin /usr/sbin $PATH])
+                            if test "x$PRELINK" = xfalse
+diff --git a/dlls/kernel32/Makefile.in b/dlls/kernel32/Makefile.in
+index 1399859..e8ca747 100644
+--- a/dlls/kernel32/Makefile.in
++++ b/dlls/kernel32/Makefile.in
+@@ -3,7 +3,7 @@ MODULE    = kernel32.dll
+ IMPORTLIB = kernel32
+ IMPORTS   = winecrt0 ntdll
+ EXTRALIBS = $(COREFOUNDATION_LIBS) $(POLL_LIBS)
+-EXTRADLLFLAGS = -nodefaultlibs -Wb,-F,KERNEL32.dll -Wl,--image-base,0x7b400000
++EXTRADLLFLAGS = -nodefaultlibs -Wb,-F,KERNEL32.dll -Wl,--image-base,@KERNEL32_IMAGE_BASE@
+ 
+ C_SRCS = \
+ 	actctx.c \
+diff --git a/dlls/kernel32/cpu.c b/dlls/kernel32/cpu.c
+index 756d8f9..55e13ac 100644
+--- a/dlls/kernel32/cpu.c
++++ b/dlls/kernel32/cpu.c
+@@ -46,7 +46,7 @@
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(reg);
+ 
+-#define SHARED_DATA     ((KSHARED_USER_DATA*)0x7ffe0000)
++#define SHARED_DATA     ((KSHARED_USER_DATA*)CONFIG_SHARED_DATA)
+ 
+ /****************************************************************************
+  *		QueryPerformanceCounter (KERNEL32.@)
+diff --git a/dlls/ntdll/Makefile.in b/dlls/ntdll/Makefile.in
+index ed4bb94..11e03bd 100644
+--- a/dlls/ntdll/Makefile.in
++++ b/dlls/ntdll/Makefile.in
+@@ -3,7 +3,7 @@ MODULE    = ntdll.dll
+ IMPORTLIB = ntdll
+ IMPORTS   = winecrt0
+ EXTRALIBS = $(IOKIT_LIBS) $(RT_LIBS) $(PTHREAD_LIBS)
+-EXTRADLLFLAGS = -nodefaultlibs -Wl,--image-base,0x7bc00000
++EXTRADLLFLAGS = -nodefaultlibs -Wl,--image-base,@NTDLL_IMAGE_BASE@
+ 
+ C_SRCS = \
+ 	actctx.c \
+diff --git a/dlls/ntdll/thread.c b/dlls/ntdll/thread.c
+index 6127c8f..2760a75 100644
+--- a/dlls/ntdll/thread.c
++++ b/dlls/ntdll/thread.c
+@@ -227,7 +227,7 @@ HANDLE thread_init(void)
+ 
+     /* reserve space for shared user data */
+ 
+-    addr = (void *)0x7ffe0000;
++    addr = (void *)CONFIG_SHARED_DATA;
+     size = 0x10000;
+     status = NtAllocateVirtualMemory( NtCurrentProcess(), &addr, 0, &size,
+                                       MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE );
+diff --git a/dlls/riched20/Makefile.in b/dlls/riched20/Makefile.in
+index be57b41..8e278a4 100644
+--- a/dlls/riched20/Makefile.in
++++ b/dlls/riched20/Makefile.in
+@@ -1,7 +1,7 @@
+ MODULE    = riched20.dll
+ IMPORTLIB = riched20
+ IMPORTS   = uuid usp10 ole32 oleaut32 imm32 user32 gdi32
+-EXTRADLLFLAGS = -Wl,--image-base,0x7ac00000
++EXTRADLLFLAGS = -Wl,--image-base,@RICHED20_IMAGE_BASE@
+ 
+ C_SRCS = \
+ 	caret.c \
+diff --git a/libs/wine/Makefile.in b/libs/wine/Makefile.in
+index 02f266c..1d5c35b 100644
+--- a/libs/wine/Makefile.in
++++ b/libs/wine/Makefile.in
+@@ -33,7 +33,7 @@ libwine_LDFLAGS = $(LIBWINE_LDFLAGS)
+ libwine_DEPS = $(LIBWINE_DEPENDS)
+ 
+ version.c: dummy
+-	version=`(GIT_DIR=$(top_srcdir)/.git git describe HEAD 2>/dev/null || echo "wine-$(PACKAGE_VERSION)") | sed -n -e '$$s/\(.*\)/const char wine_build[] = "\1";/p'` && (echo $$version | cmp -s - $@) || echo $$version >$@ || ($(RM) $@ && exit 1)
++	version=`(GIT_DIR=$(top_srcdir)/.git git describe HEAD 2>/dev/null || echo "wine-$(PACKAGE_VERSION)-eltechs") | sed -n -e '$$s/\(.*\)/const char wine_build[] = "\1";/p'` && (echo $$version | cmp -s - $@) || echo $$version >$@ || ($(RM) $@ && exit 1)
+ 
+ dummy:
+ .PHONY: dummy
+diff --git a/loader/main.c b/loader/main.c
+index 05e0c06..f54205d 100644
+--- a/loader/main.c
++++ b/loader/main.c
+@@ -156,14 +156,15 @@ static void check_threading(void)
+ 
+ static void check_vmsplit( void *stack )
+ {
+-    if (stack < (void *)0x80000000)
+-    {
+-        /* if the stack is below 0x80000000, assume we can safely try a munmap there */
+-        if (munmap( (void *)0x80000000, 1 ) == -1 && errno == EINVAL)
+-            fprintf( stderr,
+-                     "Warning: memory above 0x80000000 doesn't seem to be accessible.\n"
+-                     "Wine requires a 3G/1G user/kernel memory split to work properly.\n" );
+-    }
++	 /* if the stack is below 0x80000000, assume we can safely try a munmap there */
++	if (munmap( (void *)0x80000000, 1 ) == -1 && errno == EINVAL)
++	{
++	//	      Removed for Exagear 2g/2g wine version
++	//            fprintf( stderr,
++	//                     "Warning: memory above 0x80000000 doesn't seem to be accessible.\n"
++	//                     "Wine requires a 3G/1G user/kernel memory split to work properly.\n" );
++	}
++
+ }
+ 
+ static void set_max_limit( int limit )
+diff --git a/loader/preloader.c b/loader/preloader.c
+index 7cf2946..f1041f6 100644
+--- a/loader/preloader.c
++++ b/loader/preloader.c
+@@ -109,10 +109,10 @@
+ static struct wine_preload_info preload_info[] =
+ {
+ #ifdef __i386__
+-    { (void *)0x00000000, 0x00010000 },  /* low 64k */
+-    { (void *)0x00010000, 0x00100000 },  /* DOS area */
+-    { (void *)0x00110000, 0x67ef0000 },  /* low memory area */
+-    { (void *)0x7f000000, 0x03000000 },  /* top-down allocations + shared heap + virtual heap */
++    { (void *)0x00000000,             0x00010000 },            /* low 64k */
++    { (void *)0x00010000,             0x00100000 },            /* DOS area */
++    { (void *)CONFIG_LOWMEM_START,    CONFIG_LOWMEM_SIZE },    /* low memory area */
++    { (void *)CONFIG_WINE_DATA_START, CONFIG_WINE_DATA_SIZE }, /* top-down allocations + shared heap + virtual heap */
+ #else
+     { (void *)0x000000010000, 0x00100000 },  /* DOS area */
+     { (void *)0x000000110000, 0x67ef0000 },  /* low memory area */
+@@ -1221,8 +1221,8 @@ void* wld_start( void **stack )
+ 
+     /* add an executable page at the top of the address space to defeat
+      * broken no-exec protections that play with the code selector limit */
+-    if (is_addr_reserved( (char *)0x80000000 - page_size ))
+-        wld_mprotect( (char *)0x80000000 - page_size, page_size, PROT_EXEC | PROT_READ );
++    if (is_addr_reserved( (char *)CONFIG_ELF_ET_DYN_BASE - page_size ))
++        wld_mprotect( (char *)CONFIG_ELF_ET_DYN_BASE - page_size, page_size, PROT_EXEC | PROT_READ );
+ 
+     /* load the main binary */
+     map_so_lib( argv[1], &main_binary_map );
+
+diff --git a/loader/Makefile.in b/loader/Makefile.in
+index 8190037..cfa4e8f 100644
+--- a/loader/Makefile.in
++++ b/loader/Makefile.in
+@@ -26,7 +26,7 @@ wine64_DEPS = $(WINELOADER_DEPENDS)
+ wine64_LDFLAGS = $(LDEXECFLAGS) -lwine $(PTHREAD_LIBS)
+ 
+ wine_preloader_OBJS = preloader.o
+-wine_preloader_LDFLAGS = -static -nostartfiles -nodefaultlibs -Wl,-Ttext=0x7c400000
++wine_preloader_LDFLAGS = -static -nostartfiles -nodefaultlibs -Wl,-Ttext=$(ELF_TEXT_ADDRESS)
+ 
+ wine64_preloader_OBJS = preloader.o
+-wine64_preloader_LDFLAGS = -static -nostartfiles -nodefaultlibs -Wl,-Ttext=0x7c400000
++wine64_preloader_LDFLAGS = -static -nostartfiles -nodefaultlibs -Wl,-Ttext=$(ELF_TEXT_ADDRESS)
+

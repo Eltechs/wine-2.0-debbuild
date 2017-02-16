@@ -1,0 +1,25 @@
+From 91b38ae21a4d6eb8a209892c4e0a8e72b83ee76a Mon Sep 17 00:00:00 2001
+From: Maarten Lankhorst <m.b.lankhorst@gmail.com>
+Date: Mon, 23 Mar 2015 09:14:28 +0100
+Subject: [PATCH 01/14] winemenubuilder: silence an err
+
+---
+ programs/winemenubuilder/winemenubuilder.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/programs/winemenubuilder/winemenubuilder.c b/programs/winemenubuilder/winemenubuilder.c
+index e6fd042..e68016a 100644
+--- a/programs/winemenubuilder/winemenubuilder.c
++++ b/programs/winemenubuilder/winemenubuilder.c
+@@ -2549,7 +2549,7 @@ static BOOL write_freedesktop_association_entry(const char *desktopPath, const c
+         fclose(desktop);
+     }
+     else
+-        WINE_ERR("error writing association file %s\n", wine_dbgstr_a(desktopPath));
++        WINE_WARN("error writing association file %s\n", wine_dbgstr_a(desktopPath));
+     return ret;
+ }
+ 
+-- 
+2.5.0
+

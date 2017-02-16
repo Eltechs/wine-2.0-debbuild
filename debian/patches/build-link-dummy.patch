@@ -1,0 +1,23 @@
+diff --git a/loader/Makefile.in b/loader/Makefile.in
+index 6a47fdb..c68745a 100644
+--- a/loader/Makefile.in
++++ b/loader/Makefile.in
+@@ -29,7 +29,7 @@ INSTALLDIRS = \
+ 	$(DESTDIR)$(mandir)/fr.UTF-8/man$(prog_manext) \
+ 	$(DESTDIR)$(mandir)/pl.UTF-8/man$(prog_manext)
+ 
+-all: $(MAIN_BINARY) wine-installed $(EXTRA_BINARIES)
++all: $(MAIN_BINARY) wine-installed $(EXTRA_BINARIES) dummy
+ 
+ @MAKE_RULES@
+ 
+@@ -48,6 +48,9 @@ wine-installed: main.o Makefile.in wine_info.plist
+ wine_info.plist: wine_info.plist.in
+ 	LC_ALL=C sed -e 's,@PACKAGE_VERSION\@,@PACKAGE_VERSION@,g' $(srcdir)/wine_info.plist.in >$@ || ($(RM) $@ && false)
+ 
++dummy: ../include/config.h
++	echo 'int main() {}' | $(CC) -x c - -o $@ $(LDEXECFLAGS) -Wl,--no-as-needed $(shell grep \#define\ SONAME ../include/config.h | sed -e  's@.*lib\(.*\)\.so.*@-l\1@') $(LIBWINE) $(LIBPTHREAD) $(EXTRALIBS) $(LDFLAGS) -
++
+ $(EXTRA_BINARIES:%=__install__%): $(EXTRA_BINARIES) $(DESTDIR)$(bindir) dummy
+ 	f=`expr $@ : '__install__\(.*\)'` && $(INSTALL_PROGRAM) $$f $(DESTDIR)$(bindir)/$$f
+ 
