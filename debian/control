@@ -225,7 +225,7 @@ Architecture: i386 amd64
 Multi-Arch: foreign
 Section: metapackages
 Pre-Depends: ${misc:Pre-Depends}
-Depends: wine1.6 | wine1.8 | wine2.0
+Depends: wine2.0
 Priority: extra
 Description: Microsoft Windows Compatibility Layer (meta-package)
  Wine is a compatibility layer for running Windows applications on Linux.
