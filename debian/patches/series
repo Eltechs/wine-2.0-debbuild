@@ -7,3 +7,4 @@ winex11-Prevent-window-managers-from-grouping-all-wi.patch
 0005-server-Bump-priority-on-server-to-process-messages-f.patch
 0006-rtkit-add-SIGXCPU-handling-to-wineserver.patch
 mem2g.patch
+dsound-20.patch
